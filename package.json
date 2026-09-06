@@ -1,0 +1,19 @@
+{
+  "name": "mcpelauncher-agent",
+  "version": "0.1.0",
+  "description": "MCP server that drives a real Minecraft Bedrock client through mcpelauncher's agent socket",
+  "type": "module",
+  "bin": { "mcpelauncher-agent": "src/index.ts" },
+  "scripts": {
+    "start": "bun run src/index.ts",
+    "typecheck": "bunx tsc --noEmit"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.17.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.2.0",
+    "typescript": "^5.6.0"
+  }
+}
