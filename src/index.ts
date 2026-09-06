@@ -117,6 +117,23 @@ server.tool("mouse_move_to", "Move the cursor to window coordinates (menus; in-w
 
 server.tool("scroll", "Scroll the mouse wheel (hotbar / lists)", { ...instanceArg, dy: z.number() }, async ({ instance, dy }) => text(await pick(instance).socket.call("scroll", { dy })));
 
+server.tool(
+  "add_server",
+  "Add an external server to the game's server list via a minecraft: deep link, without clicking through the UI",
+  { ...instanceArg, name: z.string(), address: z.string().describe("host or host:port (default port 19132)") },
+  async ({ instance, name, address }) => {
+    const uri = `minecraft://?addExternalServer=${encodeURIComponent(name)}|${encodeURIComponent(address)}`;
+    return text(await pick(instance).socket.call("uri", { uri }));
+  },
+);
+
+server.tool(
+  "open_uri",
+  "Send a raw minecraft: URI to the game (deep links: servers, worlds, marketplace)",
+  { ...instanceArg, uri: z.string().describe("Must start with minecraft:") },
+  async ({ instance, uri }) => text(await pick(instance).socket.call("uri", { uri })),
+);
+
 server.tool("set_fps", "Change the render cap at runtime (0 = uncapped while focused)", { ...instanceArg, cap: z.number().int().min(0) }, async ({ instance, cap }) => text(await pick(instance).socket.call("fps", { cap })));
 
 server.tool("wait", "Wait for the game to catch up", { ms: z.number().int().min(1).max(60_000) }, async ({ ms }) => {

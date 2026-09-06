@@ -27,7 +27,7 @@ Claude Code: `claude mcp add minecraft -- bun run /path/to/mcpelauncher-agent/sr
 ## Tools
 
 `launch` · `stop` · `list` · `state` · `screenshot` · `key` · `hold_key` · `type` · `chat` · `look` ·
-`click` · `mouse_move_to` · `scroll` · `set_fps` · `wait` · `log`
+`click` · `mouse_move_to` · `scroll` · `add_server` · `open_uri` · `set_fps` · `wait` · `log`
 
 Every tool takes an optional `instance`; `launch` with a separate `data_dir` gives each bot its own login and
 worlds.
@@ -46,6 +46,7 @@ The client listens on `--agent-socket <path>` and speaks one JSON object per lin
 | `mouse_pos` | `x y` (absolute, menus) | |
 | `click` | `button=1\|2\|3` `x? y?` `action` `hold_ms` | |
 | `scroll` | `dx dy` | |
+| `uri` | `uri` (must start with `minecraft:`) | |
 | `fps` | `cap` | |
 | `quit` | | |
 
