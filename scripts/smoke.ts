@@ -25,7 +25,7 @@ const call = async (name: string, args: Record<string, unknown> = {}) => {
 
 await call("list");
 await call("launch", { width: 640, height: 360, fps_cap: 10, hidden: true });
-await call("wait", { ms: 15000 });
+await call("wait", { ms: 35000 }); // the menu is not interactive for ~30 s after launch
 await call("state");
 await call("screenshot", { width: 640 });
 await call("click", { x: 640, y: 425 });
