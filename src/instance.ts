@@ -75,6 +75,18 @@ export class Instance {
     return inst;
   }
 
+  // The socket is up as soon as the window exists, but the main menu only accepts input ~30 s after the
+  // first frame renders. Waits for that so callers can click immediately.
+  async waitForMenu(timeoutMs = 120_000) {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+      const state = await this.socket.send("state");
+      if (state.ok && (state.fps as number) > 0) break;
+      await new Promise((r) => setTimeout(r, 1000));
+    }
+    await new Promise((r) => setTimeout(r, 30_000));
+  }
+
   get alive() {
     return this.proc.exitCode === null && !this.proc.killed;
   }

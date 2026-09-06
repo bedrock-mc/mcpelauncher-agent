@@ -31,12 +31,14 @@ server.tool(
     height: z.number().int().min(180).default(480),
     fps_cap: z.number().int().min(0).default(10).describe("Render cap; the game ticks at full speed regardless"),
     hidden: z.boolean().default(true).describe("Keep the window hidden (still renders for screenshots)"),
+    wait_for_menu: z.boolean().default(true).describe("Block until the main menu accepts input (~40 s); false returns as soon as the window exists"),
   },
-  async ({ id, version, data_dir, width, height, fps_cap, hidden }) => {
+  async ({ id, version, data_dir, width, height, fps_cap, hidden, wait_for_menu }) => {
     if (instances.get(id)?.alive) throw new Error(`instance ${id} already running`);
     const inst = await Instance.launch(id, { version, dataDir: data_dir, width, height, fpsCap: fps_cap, hidden });
     instances.set(id, inst);
     current = id;
+    if (wait_for_menu) await inst.waitForMenu();
     const state = await inst.socket.call("state");
     return text({ instance: id, version: inst.version, pid: inst.proc.pid, ...state });
   },
