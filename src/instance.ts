@@ -34,6 +34,8 @@ export class Instance {
   readonly proc: ChildProcess;
   socket!: AgentSocket;
   readonly log: string[] = [];
+  // Scale from the last screenshot's pixels to window content pixels, so callers click on what they saw.
+  shotScale = 1;
 
   private constructor(id: string, version: string, dataDir: string, socketPath: string, proc: ChildProcess) {
     this.id = id;

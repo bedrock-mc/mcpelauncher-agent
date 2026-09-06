@@ -67,8 +67,10 @@ server.tool(
   "Capture the current frame as PNG",
   { ...instanceArg, width: z.number().int().min(64).optional().describe("Downscale to this width (aspect kept); default = window size") },
   async ({ instance, width }) => {
-    const res = await pick(instance).socket.call("screenshot", width ? { width } : {});
-    return { content: [{ type: "image" as const, data: res.png_base64 as string, mimeType: "image/png" }, { type: "text" as const, text: `${res.width}x${res.height}` }] };
+    const inst = pick(instance);
+    const res = await inst.socket.call("screenshot", width ? { width } : {});
+    inst.shotScale = (res.source_width as number) / (res.width as number);
+    return { content: [{ type: "image" as const, data: res.png_base64 as string, mimeType: "image/png" }, { type: "text" as const, text: `${res.width}x${res.height} (click coordinates are in this image's pixels)` }] };
   },
 );
 
@@ -110,12 +112,19 @@ server.tool("look", "Turn the camera by a relative mouse delta (pixels)", { ...i
 
 server.tool(
   "click",
-  "Click at window coordinates (or at the last position). left = attack/break, right = use/place",
+  "Click at coordinates in the last screenshot's pixels (or at the last position). left = attack/break, right = use/place",
   { ...instanceArg, button: z.enum(["left", "right", "middle"]).default("left"), x: z.number().optional(), y: z.number().optional(), action: z.enum(["tap", "press", "release"]).default("tap"), hold_ms: z.number().int().min(1).default(60) },
-  async ({ instance, ...args }) => text(await pick(instance).socket.call("click", args)),
+  async ({ instance, x, y, ...args }) => {
+    const inst = pick(instance);
+    const scaled = x !== undefined && y !== undefined ? { x: x * inst.shotScale, y: y * inst.shotScale } : {};
+    return text(await inst.socket.call("click", { ...args, ...scaled }));
+  },
 );
 
-server.tool("mouse_move_to", "Move the cursor to window coordinates (menus; in-world use look)", { ...instanceArg, x: z.number(), y: z.number() }, async ({ instance, x, y }) => text(await pick(instance).socket.call("mouse_pos", { x, y })));
+server.tool("mouse_move_to", "Move the cursor to coordinates in the last screenshot's pixels (menus; in-world use look)", { ...instanceArg, x: z.number(), y: z.number() }, async ({ instance, x, y }) => {
+  const inst = pick(instance);
+  return text(await inst.socket.call("mouse_pos", { x: x * inst.shotScale, y: y * inst.shotScale }));
+});
 
 server.tool("scroll", "Scroll the mouse wheel (hotbar / lists)", { ...instanceArg, dy: z.number() }, async ({ instance, dy }) => text(await pick(instance).socket.call("scroll", { dy })));
 
