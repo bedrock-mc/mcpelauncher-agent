@@ -66,6 +66,7 @@ export class AgentSocket {
       const waiter = res.id !== undefined ? this.pending.get(res.id) : undefined;
       if (waiter) {
         this.pending.delete(res.id!);
+        delete res.id;
         waiter.resolve(res);
       }
     }
