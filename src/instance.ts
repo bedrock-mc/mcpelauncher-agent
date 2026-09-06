@@ -86,7 +86,13 @@ export class Instance {
       if (state.ok && (state.fps as number) > 0) break;
       await new Promise((r) => setTimeout(r, 1000));
     }
-    await new Promise((r) => setTimeout(r, 30_000));
+    await new Promise((r) => setTimeout(r, 20_000));
+    // The menu starts in keyboard-focus mode and swallows the first press that arrives with the hover
+    // that switches it to mouse mode; two idle hovers get that out of the way.
+    for (const x of [600, 640]) {
+      await this.socket.send("mouse_pos", { x, y: 400 });
+      await new Promise((r) => setTimeout(r, 1000));
+    }
   }
 
   get alive() {
