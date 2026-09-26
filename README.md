@@ -29,6 +29,11 @@ iOS client under PlayCover instead, through the agent server in
   encrypts it whenever the game exits while PlayCover runs; launch the game once from PlayCover to restore it).
 - Screenshot and click coordinates are the game's render pixels. The real Mac pointer still reaches the game,
   so keep it off the window while an agent drives it.
+- `type` needs a focused text box (`state.text_input`): chat opens unfocused, and Enter or a click focuses it
+  (`chat` does this). `scroll` has no horizontal axis. `cursor_locked` is true only while macOS captures the
+  pointer (full screen); `pointer_lock_requested` says the game wants it (in-world).
+- `stop` takes ~35 s: UIKit waits for the game's background tasks before it exits, then the process is killed
+  if it is still alive.
 
 ## Run
 
@@ -67,4 +72,4 @@ speaks one JSON object per line:
 | `quit` | | |
 
 Requests may carry an `id`, echoed back in the reply. The iOS server also reports `pointer_lock_requested` and
-`text_input` in `state`, and `text` fails when no text field is focused.
+`text_input` in `state`, and `text` fails when no text box is focused.

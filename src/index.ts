@@ -114,6 +114,11 @@ server.tool("chat", "Open chat, type a message and send it", { ...instanceArg, m
   const inst = pick(instance);
   await inst.socket.call("key", { key: "t" });
   await sleep(400);
+  // The iOS client opens chat with the text box unfocused; Enter focuses it.
+  if (inst.backend === "ios" && !(await inst.socket.call("state")).text_input) {
+    await inst.socket.call("key", { key: "enter" });
+    await sleep(300);
+  }
   await inst.socket.call("text", { text: message });
   await sleep(100);
   await inst.socket.call("key", { key: "enter" });

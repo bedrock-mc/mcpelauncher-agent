@@ -101,7 +101,8 @@ export class IosInstance implements Instance {
     return running(this.pid);
   }
 
-  async stop(graceMs = 35_000) {
+  // UIKit holds a quit up to ~35 s for the game's background tasks before it exits.
+  async stop(graceMs = 45_000) {
     if (this.alive) {
       try {
         await this.socket.send("quit");
