@@ -15,6 +15,21 @@ game symbols are involved — so it survives game updates the launcher itself su
 Truly headless is not possible: Metal needs a logged-in GUI session. The window stays hidden by default and
 renders at a low frame cap, so several instances fit on one machine.
 
+### iOS backend
+
+`launch` with `backend: "ios"` (or `MCPELAUNCHER_BACKEND=ios` to make it the default) drives the decrypted
+iOS client under PlayCover instead, through the agent server in
+[bedrock-mc/mcbe-macos](https://github.com/bedrock-mc/mcbe-macos)'s `libmacfix` (enabled by
+`MACFIX_AGENT_PORT`, TCP on 127.0.0.1). It needs that app installed and patched with `scripts/setup.sh`
+(`MCPE_IOS_APP=<app path>` to override the PlayCover location; `MCPE_IOS_AGENT_PORT`, default 47555).
+
+- One instance per Mac, with the app's own data container: `data_dir` is rejected, and `width`/`height`/
+  `hidden` are ignored (the window is visible, sized by PlayCover's settings).
+- `launch` quits PlayCover first and refuses to start when PlayCover's keychain database is empty (PlayCover
+  encrypts it whenever the game exits while PlayCover runs; launch the game once from PlayCover to restore it).
+- Screenshot and click coordinates are the game's render pixels. The real Mac pointer still reaches the game,
+  so keep it off the window while an agent drives it.
+
 ## Run
 
 ```
@@ -30,11 +45,12 @@ Claude Code: `claude mcp add minecraft -- bun run /path/to/mcpelauncher-agent/sr
 `click` · `mouse_move_to` · `scroll` · `add_server` · `open_uri` · `set_fps` · `wait` · `log`
 
 Every tool takes an optional `instance`; `launch` with a separate `data_dir` gives each bot its own login and
-worlds.
+worlds (Android backend only).
 
 ## Socket protocol
 
-The client listens on `--agent-socket <path>` and speaks one JSON object per line:
+The launcher client listens on `--agent-socket <path>` (the iOS client on `127.0.0.1:$MACFIX_AGENT_PORT`) and
+speaks one JSON object per line:
 
 | cmd | fields | reply |
 |---|---|---|
@@ -50,4 +66,5 @@ The client listens on `--agent-socket <path>` and speaks one JSON object per lin
 | `fps` | `cap` | |
 | `quit` | | |
 
-Requests may carry an `id`, echoed back in the reply.
+Requests may carry an `id`, echoed back in the reply. The iOS server also reports `pointer_lock_requested` and
+`text_input` in `state`, and `text` fails when no text field is focused.

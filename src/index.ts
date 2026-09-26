@@ -2,7 +2,10 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import { Instance, installedVersions } from "./instance.ts";
+import { LauncherInstance, installedVersions, type Backend, type Instance } from "./instance.ts";
+import { IosInstance, iosVersion } from "./ios.ts";
+
+const DEFAULT_BACKEND: Backend = process.env.MCPELAUNCHER_BACKEND === "ios" ? "ios" : "android";
 
 const instances = new Map<string, Instance>();
 let current: string | undefined;
@@ -22,25 +25,32 @@ const server = new McpServer({ name: "mcpelauncher-agent", version: "0.1.0" });
 
 server.tool(
   "launch",
-  "Start a real Minecraft Bedrock client (via mcpelauncher) with the agent socket attached",
+  "Start a real Minecraft Bedrock client with the agent socket attached: the Android build via mcpelauncher, or the iOS build under PlayCover",
   {
     id: z.string().default("main").describe("Instance id, unique per running client"),
+    backend: z.enum(["android", "ios"]).default(DEFAULT_BACKEND).describe("android = mcpelauncher (several hidden instances); ios = the PlayCover iOS app (one visible window, its own window size)"),
     version: z.string().optional().describe("Installed game version; defaults to the newest"),
-    data_dir: z.string().optional().describe("Separate data dir (own Xbox login, worlds, settings) for running several bots"),
-    width: z.number().int().min(320).default(854),
-    height: z.number().int().min(180).default(480),
+    data_dir: z.string().optional().describe("Separate data dir (own Xbox login, worlds, settings) for running several bots; android only"),
+    width: z.number().int().min(320).default(854).describe("android only"),
+    height: z.number().int().min(180).default(480).describe("android only"),
     fps_cap: z.number().int().min(0).default(10).describe("Render cap; the game ticks at full speed regardless"),
-    hidden: z.boolean().default(true).describe("Keep the window hidden (still renders for screenshots)"),
+    hidden: z.boolean().default(true).describe("Keep the window hidden (still renders for screenshots); android only"),
     wait_for_menu: z.boolean().default(true).describe("Block until the main menu accepts input (~40 s); false returns as soon as the window exists"),
   },
-  async ({ id, version, data_dir, width, height, fps_cap, hidden, wait_for_menu }) => {
+  async ({ id, backend, version, data_dir, width, height, fps_cap, hidden, wait_for_menu }) => {
     if (instances.get(id)?.alive) throw new Error(`instance ${id} already running`);
-    const inst = await Instance.launch(id, { version, dataDir: data_dir, width, height, fpsCap: fps_cap, hidden });
+    let inst: Instance;
+    if (backend === "ios") {
+      inst = await IosInstance.launch(id, { version, dataDir: data_dir });
+      await inst.socket.call("fps", { cap: fps_cap });
+    } else {
+      inst = await LauncherInstance.launch(id, { version, dataDir: data_dir, width, height, fpsCap: fps_cap, hidden });
+    }
     instances.set(id, inst);
     current = id;
     if (wait_for_menu) await inst.waitForMenu();
     const state = await inst.socket.call("state");
-    return text({ instance: id, version: inst.version, pid: inst.proc.pid, ...state });
+    return text({ instance: id, backend, version: inst.version, pid: inst.pid, ...state });
   },
 );
 
@@ -55,7 +65,9 @@ server.tool("stop", "Quit a running client (in-game quit, force-killed after 35s
 server.tool("list", "List installed game versions and running instances", {}, async () =>
   text({
     versions: installedVersions(),
-    instances: [...instances.values()].filter((i) => i.alive).map((i) => ({ id: i.id, version: i.version, pid: i.proc.pid, data_dir: i.dataDir })),
+    ios_version: iosVersion() ?? null,
+    default_backend: DEFAULT_BACKEND,
+    instances: [...instances.values()].filter((i) => i.alive).map((i) => ({ id: i.id, backend: i.backend, version: i.version, pid: i.pid, data_dir: i.dataDir })),
     current,
   }),
 );

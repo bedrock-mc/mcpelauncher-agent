@@ -1,4 +1,4 @@
-import { connect, type Socket } from "node:net";
+import { connect, type NetConnectOpts, type Socket } from "node:net";
 
 export interface AgentResponse {
   ok: boolean;
@@ -6,7 +6,7 @@ export interface AgentResponse {
   [key: string]: unknown;
 }
 
-// Line-delimited JSON over the client's --agent-socket; requests carry an id so replies can interleave.
+// Line-delimited JSON over the client's agent socket; requests carry an id so replies can interleave.
 export class AgentSocket {
   private sock: Socket;
   private buf = "";
@@ -21,15 +21,18 @@ export class AgentSocket {
     sock.on("error", (e) => this.fail(e));
   }
 
-  static connect(path: string, timeoutMs = 30_000): Promise<AgentSocket> {
+  // Unix socket path (launcher) or TCP address (iOS client).
+  static connect(target: string | { host: string; port: number }, timeoutMs = 30_000): Promise<AgentSocket> {
     const deadline = Date.now() + timeoutMs;
+    const opts: NetConnectOpts = typeof target === "string" ? { path: target } : target;
+    const name = typeof target === "string" ? target : `${target.host}:${target.port}`;
     return new Promise((resolve, reject) => {
       const attempt = () => {
-        const sock = connect({ path });
+        const sock = connect(opts);
         sock.once("connect", () => resolve(new AgentSocket(sock)));
         sock.once("error", () => {
           sock.destroy();
-          if (Date.now() > deadline) reject(new Error(`agent socket ${path} not reachable after ${timeoutMs}ms`));
+          if (Date.now() > deadline) reject(new Error(`agent socket ${name} not reachable after ${timeoutMs}ms`));
           else setTimeout(attempt, 250);
         });
       };
