@@ -28,20 +28,20 @@ server.tool(
   "Start a real Minecraft Bedrock client with the agent socket attached: the Android build via mcpelauncher, or the iOS build under PlayCover",
   {
     id: z.string().default("main").describe("Instance id, unique per running client"),
-    backend: z.enum(["android", "ios"]).default(DEFAULT_BACKEND).describe("android = mcpelauncher (several hidden instances); ios = the PlayCover iOS app (one visible window, its own window size)"),
+    backend: z.enum(["android", "ios"]).default(DEFAULT_BACKEND).describe("android = mcpelauncher (several hidden instances); ios = the PlayCover iOS app (one instance, its own window size)"),
     version: z.string().optional().describe("Installed game version; defaults to the newest"),
     data_dir: z.string().optional().describe("Separate data dir (own Xbox login, worlds, settings) for running several bots; android only"),
     width: z.number().int().min(320).default(854).describe("android only"),
     height: z.number().int().min(180).default(480).describe("android only"),
     fps_cap: z.number().int().min(0).default(10).describe("Render cap; the game ticks at full speed regardless"),
-    hidden: z.boolean().default(true).describe("Keep the window hidden (still renders for screenshots); android only"),
+    hidden: z.boolean().default(true).describe("Keep the window hidden (still renders for screenshots and takes input)"),
     wait_for_menu: z.boolean().default(true).describe("Block until the main menu accepts input (~40 s); false returns as soon as the window exists"),
   },
   async ({ id, backend, version, data_dir, width, height, fps_cap, hidden, wait_for_menu }) => {
     if (instances.get(id)?.alive) throw new Error(`instance ${id} already running`);
     let inst: Instance;
     if (backend === "ios") {
-      inst = await IosInstance.launch(id, { version, dataDir: data_dir });
+      inst = await IosInstance.launch(id, { version, dataDir: data_dir, hidden });
       await inst.socket.call("fps", { cap: fps_cap });
     } else {
       inst = await LauncherInstance.launch(id, { version, dataDir: data_dir, width, height, fpsCap: fps_cap, hidden });

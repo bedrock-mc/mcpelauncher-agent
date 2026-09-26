@@ -23,12 +23,16 @@ iOS client under PlayCover instead, through the agent server in
 `MACFIX_AGENT_PORT`, TCP on 127.0.0.1). It needs that app installed and patched with `scripts/setup.sh`
 (`MCPE_IOS_APP=<app path>` to override the PlayCover location; `MCPE_IOS_AGENT_PORT`, default 47555).
 
-- One instance per Mac, with the app's own data container: `data_dir` is rejected, and `width`/`height`/
-  `hidden` are ignored (the window is visible, sized by PlayCover's settings).
+- One instance per Mac, with the app's own data container: `data_dir` is rejected, and `width`/`height` are
+  ignored (the game renders at PlayCover's resolution setting).
+- `hidden` (the default) launches the game in the background (`open -g`) and keeps its window ordered out while
+  it keeps rendering, taking input and giving screenshots; at `fps_cap` 10 it costs about a third of one core.
+  While hidden, the game ignores real background events (it still saves on quit). `hidden: false` shows the
+  window.
 - `launch` quits PlayCover first and refuses to start when PlayCover's keychain database is empty (PlayCover
   encrypts it whenever the game exits while PlayCover runs; launch the game once from PlayCover to restore it).
-- Screenshot and click coordinates are the game's render pixels. The real Mac pointer still reaches the game,
-  so keep it off the window while an agent drives it.
+- Screenshot and click coordinates are the game's render pixels. With a visible window the real Mac pointer
+  still reaches the game, so keep it off the window while an agent drives it.
 - `type` needs a focused text box (`state.text_input`): chat opens unfocused, and Enter or a click focuses it
   (`chat` does this). `scroll` has no horizontal axis. `cursor_locked` is true only while macOS captures the
   pointer (full screen); `pointer_lock_requested` says the game wants it (in-world).

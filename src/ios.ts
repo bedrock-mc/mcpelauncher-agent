@@ -56,7 +56,7 @@ async function preflight() {
 }
 
 // The iOS Minecraft client under PlayCover with the macfix agent server (MACFIX_AGENT_PORT). One per Mac:
-// it uses the app's single data container and a visible window.
+// it uses the app's single data container. Hidden instances launch in the background and keep rendering.
 export class IosInstance implements Instance {
   readonly backend = "ios";
   readonly dataDir = DATA;
@@ -66,7 +66,7 @@ export class IosInstance implements Instance {
 
   private constructor(readonly id: string, readonly version: string, public pid: number | undefined, readonly socket: AgentSocket) {}
 
-  static async launch(id: string, opts: { version?: string; dataDir?: string }): Promise<IosInstance> {
+  static async launch(id: string, opts: { version?: string; dataDir?: string; hidden?: boolean }): Promise<IosInstance> {
     if (opts.dataDir) throw new Error("data_dir is not supported by the ios backend: the iOS client has one data container");
     const version = iosVersion();
     if (!version) throw new Error(`iOS Minecraft not installed at ${APP} (set MCPE_IOS_APP)`);
@@ -75,7 +75,9 @@ export class IosInstance implements Instance {
       throw new Error("iOS Minecraft is already running; quit it first (the agent server is only enabled at launch)");
     }
     await preflight();
-    await run("/usr/bin/open", ["--env", `MACFIX_AGENT_PORT=${PORT}`, APP]);
+    const args = ["--env", `MACFIX_AGENT_PORT=${PORT}`];
+    if (opts.hidden) args.push("-g", "--env", "MACFIX_AGENT_HIDDEN=1");
+    await run("/usr/bin/open", [...args, APP]);
     let pid: number | undefined;
     const deadline = Date.now() + 30_000;
     while (!(pid = await pidOf(PROCESS)) && Date.now() < deadline) await sleep(250);
