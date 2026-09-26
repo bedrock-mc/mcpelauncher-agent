@@ -4,9 +4,14 @@ import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import { AgentSocket, type AgentResponse } from "./socket.ts";
 
+const MACOS = process.platform === "darwin";
+const ABI = process.arch === "x64" ? "x86_64" : "arm64-v8a";
 const APP = process.env.MCPELAUNCHER_APP ?? "/Applications/Minecraft Bedrock Launcher.app";
-const DATA = process.env.MCPELAUNCHER_DATA ?? join(homedir(), "Library/Application Support/mcpelauncher");
-const ABI = "arm64-v8a";
+// The bedrock-mc fork's client: inside the app bundle on macOS, on PATH elsewhere.
+const CLIENT = process.env.MCPELAUNCHER_CLIENT ?? (MACOS ? join(APP, "Contents/MacOS", `mcpelauncher-client-${ABI}`) : "mcpelauncher-client");
+const DATA = process.env.MCPELAUNCHER_DATA ??
+  (MACOS ? join(homedir(), "Library/Application Support/mcpelauncher")
+    : join(process.env.XDG_DATA_HOME ?? join(homedir(), ".local/share"), "mcpelauncher"));
 
 export type Backend = "android" | "ios";
 
@@ -106,12 +111,15 @@ export class LauncherInstance implements Instance {
     ];
     if (opts.hidden) args.push("--hidden");
     if (existsSync(modsDir)) args.push("-m", modsDir + "/");
-    const proc = spawn(join(APP, "Contents/MacOS", `mcpelauncher-client-${ABI}`), args, { stdio: ["ignore", "pipe", "pipe"] });
+    const proc = spawn(CLIENT, args, { stdio: ["ignore", "pipe", "pipe"] });
     const inst = new LauncherInstance(id, version, dataDir, socketPath, proc);
     const keep = (chunk: Buffer) => appendLog(inst.log, chunk);
     proc.stdout!.on("data", keep);
     proc.stderr!.on("data", keep);
-    const exited = new Promise<never>((_, reject) => proc.once("exit", (code) => reject(new Error(`client exited with code ${code}\n${inst.log.slice(-20).join("\n")}`))));
+    const exited = new Promise<never>((_, reject) => {
+      proc.once("exit", (code) => reject(new Error(`client exited with code ${code}\n${inst.log.slice(-20).join("\n")}`)));
+      proc.once("error", (e) => reject(new Error(`cannot start ${CLIENT}: ${e.message} (set MCPELAUNCHER_CLIENT to the fork's client)`)));
+    });
     inst.socket = await Promise.race([AgentSocket.connect(socketPath, 90_000), exited]);
     return inst;
   }

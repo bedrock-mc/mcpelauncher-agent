@@ -7,12 +7,14 @@ game symbols are involved — so it survives game updates the launcher itself su
 
 ## Requirements
 
-- macOS, Apple Silicon, the fork's `mcpelauncher-client-arm64-v8a` installed in
-  `/Applications/Minecraft Bedrock Launcher.app` (or `MCPELAUNCHER_APP=<app path>`), a version installed
-  through the launcher UI, and a signed-in Xbox account in that data dir.
+- The [bedrock-mc fork](https://github.com/bedrock-mc/mcpelauncher-manifest)'s client (the stock launcher has no
+  agent socket), a version installed through the launcher UI, and a signed-in Xbox account in that data dir.
+  - macOS: the fork's `Minecraft Bedrock Launcher.app` in `/Applications` (or `MCPELAUNCHER_APP=<app path>`).
+  - Linux: `mcpelauncher-client` from the fork on `PATH` (or `MCPELAUNCHER_CLIENT=<binary>`); data in
+    `~/.local/share/mcpelauncher` (or `MCPELAUNCHER_DATA=<dir>`). Not tested on Linux yet.
 - [Bun](https://bun.sh).
 
-Truly headless is not possible: Metal needs a logged-in GUI session. The window stays hidden by default and
+Truly headless is not possible: the game needs a GPU and a logged-in GUI session. The window stays hidden by default and
 renders at a low frame cap, so several instances fit on one machine.
 
 ### iOS backend
