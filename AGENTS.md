@@ -13,4 +13,6 @@ The iOS backend (`src/ios.ts`) speaks the same protocol over TCP to `macfix/agen
   after launch. For the iOS backend run it with `MCPELAUNCHER_BACKEND=ios`; it needs PlayCover quit and the
   game's PlayChain keychain database non-empty, and it shares the Mac's one game install and window.
 - Never add clicking/typing into the game on the model's behalf beyond what the tools already do explicitly;
-  every action stays a tool call the caller chose.
+  every action stays a tool call the caller chose. Launcher prompts outside the game are different: the Google
+  credentials consent that the mcpelauncher-updates mod triggers on every launch is always approved
+  (`src/consent.ts`), because nobody can click it on a hidden or virtual display.

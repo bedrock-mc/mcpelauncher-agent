@@ -2,6 +2,7 @@ import { spawn, type ChildProcess } from "node:child_process";
 import { existsSync, mkdirSync, readdirSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
+import { approveCredentialsPrompt } from "./consent.ts";
 import { AgentSocket, type AgentResponse } from "./socket.ts";
 
 const MACOS = process.platform === "darwin";
@@ -9,6 +10,9 @@ const ABI = process.arch === "x64" ? "x86_64" : "arm64-v8a";
 const APP = process.env.MCPELAUNCHER_APP ?? "/Applications/Minecraft Bedrock Launcher.app";
 // The bedrock-mc fork's client: inside the app bundle on macOS, on PATH elsewhere.
 const CLIENT = process.env.MCPELAUNCHER_CLIENT ?? (MACOS ? join(APP, "Contents/MacOS", `mcpelauncher-client-${ABI}`) : "mcpelauncher-client");
+// Where the client's agent socket goes. A sandboxed client (the flatpak) has a private /tmp, so point this at a
+// directory both sides share, e.g. ~/.var/app/io.mrarm.mcpelauncher/data.
+const SOCKET_DIR = process.env.MCPELAUNCHER_SOCKET_DIR ?? tmpdir();
 const DATA = process.env.MCPELAUNCHER_DATA ??
   (MACOS ? join(homedir(), "Library/Application Support/mcpelauncher")
     : join(process.env.XDG_DATA_HOME ?? join(homedir(), ".local/share"), "mcpelauncher"));
@@ -100,7 +104,8 @@ export class LauncherInstance implements Instance {
     }
     const dataDir = opts.dataDir ?? DATA;
     mkdirSync(dataDir, { recursive: true });
-    const socketPath = join(tmpdir(), `mcpelauncher-agent-${id}.sock`);
+    mkdirSync(SOCKET_DIR, { recursive: true });
+    const socketPath = join(SOCKET_DIR, `mcpelauncher-agent-${id}.sock`);
     const modsDir = join(DATA, "mods/mcpelauncher-updates", version, ABI);
     const args = [
       "-dg", join(DATA, "versions", version),
@@ -113,14 +118,25 @@ export class LauncherInstance implements Instance {
     if (existsSync(modsDir)) args.push("-m", modsDir + "/");
     const proc = spawn(CLIENT, args, { stdio: ["ignore", "pipe", "pipe"] });
     const inst = new LauncherInstance(id, version, dataDir, socketPath, proc);
-    const keep = (chunk: Buffer) => appendLog(inst.log, chunk);
+    let approving = false;
+    const keep = (chunk: Buffer) => {
+      appendLog(inst.log, chunk);
+      if (!MACOS && !approving && chunk.toString().includes("Executing google credentials helper")) {
+        approving = true;
+        void approveCredentialsPrompt((line) => appendLog(inst.log, line)).finally(() => (approving = false));
+      }
+    };
     proc.stdout!.on("data", keep);
     proc.stderr!.on("data", keep);
     const exited = new Promise<never>((_, reject) => {
       proc.once("exit", (code) => reject(new Error(`client exited with code ${code}\n${inst.log.slice(-20).join("\n")}`)));
       proc.once("error", (e) => reject(new Error(`cannot start ${CLIENT}: ${e.message} (set MCPELAUNCHER_CLIENT to the fork's client)`)));
     });
-    inst.socket = await Promise.race([AgentSocket.connect(socketPath, 90_000), exited]);
+    // A socket that never appears usually means the client is stuck; say where.
+    const connected = AgentSocket.connect(socketPath, 90_000).catch((e: Error) => {
+      throw new Error(`${e.message}\n${inst.log.slice(-20).join("\n")}`);
+    });
+    inst.socket = await Promise.race([connected, exited]);
     return inst;
   }
 

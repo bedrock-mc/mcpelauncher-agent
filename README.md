@@ -10,11 +10,15 @@ game symbols are involved — so it survives game updates the launcher itself su
 - The [bedrock-mc fork](https://github.com/bedrock-mc/mcpelauncher-manifest)'s client (the stock launcher has no
   agent socket), a version installed through the launcher UI, and a signed-in Xbox account in that data dir.
   - macOS: the fork's `Minecraft Bedrock Launcher.app` in `/Applications` (or `MCPELAUNCHER_APP=<app path>`).
-  - Linux: `mcpelauncher-client` from the fork on `PATH` (or `MCPELAUNCHER_CLIENT=<binary>`); data in
-    `~/.local/share/mcpelauncher` (or `MCPELAUNCHER_DATA=<dir>`). Not tested on Linux yet.
+  - Linux: `mcpelauncher-client` from the fork on `PATH` (or `MCPELAUNCHER_CLIENT=<binary>`, e.g. a wrapper that runs
+    the flatpak under Xvfb); data in `~/.local/share/mcpelauncher` (or `MCPELAUNCHER_DATA=<dir>`). A sandboxed
+    client has its own `/tmp`, so set `MCPELAUNCHER_SOCKET_DIR` to a directory both sides see (for the flatpak,
+    `~/.var/app/io.mrarm.mcpelauncher/data`). The mcpelauncher-updates mod asks to use the Google login on every
+    launch; the agent approves that prompt itself, which needs `xdotool`.
 - [Bun](https://bun.sh).
 
-Truly headless is not possible: the game needs a GPU and a logged-in GUI session. The window stays hidden by default and
+On macOS truly headless is not possible: the game needs a GPU and a logged-in GUI session. On Linux it runs under Xvfb
+with software rendering (e.g. the flatpak with `LIBGL_ALWAYS_SOFTWARE=1`). The window stays hidden by default and
 renders at a low frame cap, so several instances fit on one machine.
 
 ### iOS backend
